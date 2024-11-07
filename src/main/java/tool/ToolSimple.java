@@ -31,7 +31,6 @@ public class ToolSimple {
     }
     System.out.println("Write File is succesfully!!");
   }
-
   public void readFileEV() {
 
     try (Stream<String> lines = Files.lines(Paths.get("A.txt"))) {
