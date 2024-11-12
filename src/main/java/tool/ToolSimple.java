@@ -85,15 +85,15 @@ public class ToolSimple {
 
   public void databaseExecuteUpdate(Word word) {
     try (Connection c = getConnectionDatabase()) {
-
       if (c != null) {
         String sql =
-            "INSERT INTO dictionary(word, meaning, pronounce, language) VALUES (?, ?, ?, ?)";
+            "INSERT INTO dictionary(word, meaning, pronounce, language, description) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = c.prepareStatement(sql)) {
           pstmt.setString(1, word.key);
           pstmt.setString(2, word.meaning);
           pstmt.setString(3, word.pronounce);
           pstmt.setString(4, word.language);
+          pstmt.setString(5, word.description);
           pstmt.executeUpdate();
         } catch (Exception e) {
           System.err.println("Not execute update query " + e);
@@ -110,14 +110,17 @@ public class ToolSimple {
       if (c != null) {
         c.setAutoCommit(false);
         String sql =
-            "INSERT INTO dictionary(word, meaning, pronounce, language) VALUES (?, ?, ?, ?) ON CONFLICT (word) DO NOTHING";
+            "INSERT INTO dictionary(word, meaning, pronounce, language, description) VALUES (?, ?, ?, ?, ?) ON CONFLICT (word) DO NOTHING";
         try (PreparedStatement pstmt = c.prepareStatement(sql)) {
           for (Word word : words) {
-            pstmt.setString(1, word.key);
-            pstmt.setString(2, word.meaning);
-            pstmt.setString(3, word.pronounce);
-            pstmt.setString(4, word.language);
-            pstmt.addBatch();
+            if(!word.key.equalsIgnoreCase(word.meaning)) {
+              pstmt.setString(1, word.key);
+              pstmt.setString(2, word.meaning);
+              pstmt.setString(3, word.pronounce);
+              pstmt.setString(4, word.language);
+              pstmt.setString(5, word.description);
+              pstmt.addBatch();
+            }
           }
           System.out.println("Start");
           pstmt.executeBatch();
@@ -155,7 +158,7 @@ public class ToolSimple {
       }
       value = value.replace("colspan=\"2\"", "");
       value = value.replace("colspan=\"3\"", "");
-      value = value.replace("#7E0000", "#f97316");
+      value = value.replace("#7E0000", "#16a34a");
       value = value.replace("#0000FF", "#ef4444");
       value = value.replace("#FF0000", "#57534e");
       value = value.replace("#7E7E7E", "#737373");
@@ -185,8 +188,18 @@ public class ToolSimple {
 
   public static void main(String[] args) {
     ToolSimple tool = new ToolSimple();
-    tool.readFileVE();
-    List<Word> words = tool.targetWordsVE();
+    tool.readFileEV();
+    List<Word> words = tool.targetWordsEV();
+    words.forEach(word -> {
+      word.description = word.meaning;
+      try {
+        word.meaning = GoogleTranslate.translate("en", "vi", word.key);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    });
+    
     tool.databaseExecuteBatchInsertWithTransaction(words);
     words = tool.targetWordsEV();
   }
