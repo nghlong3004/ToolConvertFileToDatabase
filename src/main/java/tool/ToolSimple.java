@@ -31,6 +31,7 @@ public class ToolSimple {
     }
     System.out.println("Write File is succesfully!!");
   }
+
   public void readFileEV() {
 
     try (Stream<String> lines = Files.lines(Paths.get("A.txt"))) {
@@ -52,6 +53,7 @@ public class ToolSimple {
     System.out.println("Read File Eng - Viet is succesfully!!");
 
   }
+
   public void readFileVE() {
 
     try (Stream<String> lines = Files.lines(Paths.get("DictionaryVE.txt"))) {
@@ -60,7 +62,7 @@ public class ToolSimple {
         String key = line.substring(0, line.indexOf('<')).trim();
         key = key.toLowerCase();
         dictionary.put(key, value);
-         
+
       });
     } catch (IOException e) {
       e.printStackTrace();
@@ -113,14 +115,14 @@ public class ToolSimple {
             "INSERT INTO dictionary(word, meaning, pronounce, language, description) VALUES (?, ?, ?, ?, ?) ON CONFLICT (word) DO NOTHING";
         try (PreparedStatement pstmt = c.prepareStatement(sql)) {
           for (Word word : words) {
-            if(!word.key.equalsIgnoreCase(word.meaning)) {
+            
               pstmt.setString(1, word.key);
               pstmt.setString(2, word.meaning);
               pstmt.setString(3, word.pronounce);
               pstmt.setString(4, word.language);
               pstmt.setString(5, word.description);
               pstmt.addBatch();
-            }
+           
           }
           System.out.println("Start");
           pstmt.executeBatch();
@@ -147,9 +149,10 @@ public class ToolSimple {
       System.err.println("Not close connection database");
     }
   }
-  
-  private List<Word> targetWordsEV(){
+
+  private List<Word> targetWordsEV() {
     List<Word> words = new ArrayList<Word>();
+    System.out.println(dictionary.size());
     for (Map.Entry<String, String> entry : dictionary.entrySet()) {
       String value = entry.getValue();
       for (int i = 'a'; i <= 'z'; ++i) {
@@ -163,45 +166,103 @@ public class ToolSimple {
       value = value.replace("#FF0000", "#57534e");
       value = value.replace("#7E7E7E", "#737373");
       Word word = new Word();
-      word.key = entry.getKey().substring(0, 1).toUpperCase() + entry.getKey().substring(1).toLowerCase();
-      word.meaning = value.replace("[", "").replace("]", "");
+      word.key =
+          entry.getKey().substring(0, 1).toUpperCase() + entry.getKey().substring(1).toLowerCase();
+      word.description = value.replace("[", "").replace("]", "").replace("\'", "");
       word.pronounce = value.substring(value.indexOf('[') + 1, value.indexOf(']'));
       word.language = "en";
-      words.add(word);
+      word.meaning = word.description.substring(word.description.indexOf(';') + 1);
+      if (word.meaning.charAt(0) != '<') {
+        word.meaning = word.meaning.substring(word.meaning.indexOf(';'));
+      }
+      word.meaning = word.meaning.substring(9);
+      word.meaning = word.meaning.replace(">", "");
+      word.meaning = word.meaning.substring(0, word.meaning.indexOf('<')).trim();
+      word.meaning = word.meaning.replace(">", "");
+      if (!word.meaning.isEmpty() && !word.description.contains("Như")
+          && !word.description.contains("như"))
+        words.add(word);
+      else if (!word.description.contains("Như") && !word.description.contains("như")) {
+        StringBuffer sbr = new StringBuffer(word.description);
+        sbr.reverse();
+        String a = sbr.substring(0, sbr.indexOf(";"));
+        sbr = new StringBuffer(a);
+        sbr.reverse();
+        a = sbr.toString().substring(8);
+        a = a.substring(0, a.indexOf('<'));
+        a = a.replace("<", "");
+        a = a.replace(">", "");
+        a = a.trim();
+        if (!a.isEmpty()) {
+          word.meaning = a;
+          words.add(word);
+        }
+      }
     }
     return words;
   }
-  private List<Word> targetWordsVE(){
+
+  private List<Word> targetWordsVE() {
     List<Word> words = new ArrayList<Word>();
     for (Map.Entry<String, String> entry : dictionary.entrySet()) {
       String value = entry.getValue();
-      String pronounce = value.substring(1);
-      Word word = new Word();
-      word.key = entry.getKey().substring(0, 1).toUpperCase() + entry.getKey().substring(1).toLowerCase();
-      word.meaning = value.replace("(C) 2007 <A href='http://www.tudientiengviet.net'>www.TừĐiểnTiếngViệt.net</A>", "");
-      word.pronounce = pronounce.substring(pronounce.indexOf('>') + 1, pronounce.indexOf('<'));
-      word.language = "vi";
-      words.add(word);
+      if (value.contains("<B><I>") && value.contains("<B> ")) {
+        String pronounce = value.substring(1);
+        Word word = new Word();
+        word.key = entry.getKey().substring(0, 1).toUpperCase()
+            + entry.getKey().substring(1).toLowerCase();
+        word.description = value.replace(
+            "(C) 2007 <A href='http://www.tudientiengviet.net'>www.TừĐiểnTiếngViệt.net</A>", "");
+        pronounce = pronounce.substring(pronounce.indexOf("<B><I>"));
+        word.pronounce = pronounce.substring(pronounce.indexOf(' '));
+        word.meaning = word.pronounce.substring(word.pronounce.indexOf("<B>") + 3);
+        word.meaning = word.meaning.substring(0, word.meaning.indexOf('<')).trim();
+        word.pronounce = word.pronounce.substring(0, word.pronounce.indexOf('<'));
+        word.language = "vi";
+        if (!word.meaning.isEmpty()) {
+          words.add(word);
+        }
+      }
     }
     return words;
   }
 
   public static void main(String[] args) {
     ToolSimple tool = new ToolSimple();
-    tool.readFileEV();
-    List<Word> words = tool.targetWordsEV();
+    tool.readFileVE();
+    List<Word> words = tool.targetWordsVE();
+//    // eng -> viet
+//    words.forEach(word -> {
+//      if (word.meaning.contains("(") && word.meaning.length() == 1) {
+//        String value = word.description;
+//        value = value.substring(value.indexOf(';') + 10);
+//        value = value.substring(value.indexOf(')') + 1);
+//        while (value.charAt(0) == '(' && value.charAt(1) == '<') {
+//          value = value.substring(value.indexOf(')') + 2);
+//        }
+//        value = value.substring(0, value.indexOf('<'));
+//        word.meaning = value.trim();
+//      }
+//      if ((word.meaning.length() == 1 && word.meaning.contains("(")) || word.meaning.isEmpty()) {
+//
+//      } else {
+//        if (word.meaning.length() == 1)
+//          word.meaning = word.meaning.substring(0, 1).toUpperCase();
+//        else
+//          word.meaning =
+//              word.meaning.substring(0, 1).toUpperCase() + word.meaning.substring(1).toLowerCase();
+//      }
+//    });
+    // Viet -> eng
+    System.out.println(words.size());
     words.forEach(word -> {
-      word.description = word.meaning;
-      try {
-        word.meaning = GoogleTranslate.translate("en", "vi", word.key);
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      word.partOfSpeech = word.pronounce;
+      word.pronounce = "";
+     // System.out.println(word.description);
     });
     
     tool.databaseExecuteBatchInsertWithTransaction(words);
-    words = tool.targetWordsEV();
+    // words = tool.targetWordsEV();
   }
 
 }
