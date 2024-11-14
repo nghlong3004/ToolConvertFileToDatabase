@@ -207,5 +207,13 @@ public final class GoogleTranslate { //Class marked as final since all methods a
         a_l %= Math.pow(10, 6);
         return String.format(Locale.US, "%d.%d", a_l, a_l ^ b);
     }
+    public static void main(String[] args) {
+      try {
+        System.out.println(translate("en", "vi", "transmit"));
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
     
 }
